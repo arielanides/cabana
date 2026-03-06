@@ -307,7 +307,7 @@
     <div class="stat"><div class="stat-num" id="stat-trabajos">—</div><div class="stat-label">Trabajos</div></div>
     <div class="stat"><div class="stat-num" style="color:var(--paid)" id="stat-pagas">—</div><div class="stat-label">Pagos ✓</div></div>
     <div class="stat"><div class="stat-num" style="color:var(--unpaid)" id="stat-pendientes">—</div><div class="stat-label">Pendientes</div></div>
-    <div class="stat"><div class="stat-num" style="color:#c8854a;font-size:1rem" id="stat-adeudado">—</div><div class="stat-label">Total adeudado</div></div>
+    <div class="stat" id="stat-adeudado-card"><div class="stat-num" style="color:#c8854a;font-size:1rem" id="stat-adeudado">—</div><div class="stat-label">Total adeudado</div></div>
     <div class="stat" id="stat-cobrado-card"><div class="stat-num" style="color:var(--paid);font-size:1rem" id="stat-cobrado">—</div><div class="stat-label">Total cobrado</div></div>
   </div>
 
@@ -434,6 +434,7 @@
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('user-label').textContent = `👤 ${usuarioActual.nombre}`;
     document.getElementById('stat-cobrado-card').style.display = usuarioActual.esAdmin ? '' : 'none';
+    document.getElementById('stat-adeudado-card').style.display = usuarioActual.esAdmin ? '' : 'none';
     document.getElementById('config-panel').style.display = usuarioActual.esAdmin ? '' : 'none';
     cargarDatos();
   }
