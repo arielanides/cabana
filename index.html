@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cabaña">
+<meta name="theme-color" content="#2a2218">
+<title>Cabaña · Panel de Administración</title>
+<!-- Favicon emoji casa -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%234a3520'/><text y='78' x='50' text-anchor='middle' font-size='65'>🏡</text></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%234a3520'/><text y='78' x='50' text-anchor='middle' font-size='65'>🏡</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<style>
+  :root {
+    --bg: #f5f0e8; --surface: rgba(255,253,248,0.93); --surface2: rgba(240,235,224,0.9);
+    --border: #d8cfc0; --text: #2a2218; --muted: #7a6e5f;
+    --accent: #4a3520; --accent2: #c8854a;
+    --paid: #2d6a4f; --paid-bg: #d8f3dc; --paid-border: #95d5b2;
+    --unpaid: #9b2226; --unpaid-bg: #fde8e8; --unpaid-border: #f4a0a0;
+    --work-bg: #eef2ff; --work-border: #a5b4fc; --work-color: #3730a3;
+    --radius: 14px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'DM Sans', sans-serif; color: var(--text); min-height: 100vh;
+    background: linear-gradient(to bottom, rgba(20,35,20,0.55) 0%, rgba(30,50,30,0.35) 40%, rgba(245,240,232,0.92) 100%),
+    url('https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Delta_del_Paran%C3%A1.jpg/1280px-Delta_del_Paran%C3%A1.jpg') center/cover fixed;
+  }
+
+  /* ===== LOGIN ===== */
+  .login-screen {
+    position: fixed; inset: 0; z-index: 200;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, rgba(20,35,20,0.85) 0%, rgba(74,53,32,0.85) 100%);
+    backdrop-filter: blur(8px);
+  }
+  .login-box {
+    background: rgba(255,253,248,0.97); border-radius: 20px;
+    padding: 40px 36px; width: 340px; max-width: 90vw;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+    text-align: center;
+  }
+  .login-box h2 { font-family: 'Playfair Display', serif; font-size: 1.6rem; color: var(--accent); margin-bottom: 6px; }
+  .login-box p { font-size: 0.82rem; color: var(--muted); margin-bottom: 28px; }
+  .login-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; text-align: left; }
+  .login-field label { font-size: 0.72rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .login-field input { padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 9px; font-family: 'DM Sans', sans-serif; font-size: 0.95rem; background: var(--bg); outline: none; transition: border-color 0.2s; }
+  .login-field input:focus { border-color: var(--accent2); }
+  .login-btn { width: 100%; padding: 12px; background: var(--accent); color: #fff; border: none; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-top: 8px; }
+  .login-btn:hover { background: var(--accent2); transform: translateY(-1px); }
+  .login-error { color: var(--unpaid); font-size: 0.8rem; margin-top: 10px; min-height: 18px; }
+
+  /* ===== HEADER ===== */
+  header { background: rgba(30,50,25,0.82); backdrop-filter: blur(12px); color: #fff; padding: 18px 40px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 30px rgba(0,0,0,0.3); border-bottom: 1px solid rgba(255,255,255,0.1); position: sticky; top: 0; z-index: 50; }
+  header h1 { font-family: 'Playfair Display', serif; font-size: 1.7rem; }
+  .header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .sync-indicator { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: rgba(255,255,255,0.7); }
+  .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 8px #4ade80; }
+  .sync-dot.syncing { background: #fbbf24; box-shadow: 0 0 8px #fbbf24; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .user-badge { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; color: rgba(255,255,255,0.8); }
+  .logout-btn { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 0.72rem; cursor: pointer; transition: background 0.2s; }
+  .logout-btn:hover { background: rgba(255,255,255,0.25); }
+
+  /* ===== MISC ===== */
+  .loading-bar { position: fixed; top: 0; left: 0; right: 0; height: 3px; background: var(--accent2); z-index: 9999; transform: scaleX(0); transform-origin: left; transition: transform 0.3s ease; }
+  .loading-bar.active { transform: scaleX(0.7); }
+  .loading-bar.done { transform: scaleX(1); opacity: 0; transition: transform 0.2s, opacity 0.3s 0.2s; }
+  .toast { position: fixed; bottom: 24px; right: 24px; color: #fff; padding: 13px 20px; border-radius: 11px; font-size: 0.85rem; z-index: 9999; transform: translateY(80px); opacity: 0; transition: all 0.3s ease; max-width: 320px; background: var(--text); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { background: var(--paid); }
+  .toast.error { background: var(--unpaid); }
+
+  .container { max-width: 1400px; margin: 0 auto; padding: 28px 20px; display: flex; flex-direction: column; gap: 24px; }
+  .section-title { font-family: 'Playfair Display', serif; font-size: 1.5rem; color: #fff; text-shadow: 0 2px 12px rgba(0,0,0,0.5); margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+  .section-title span { font-size: 0.82rem; font-family: 'DM Sans', sans-serif; font-weight: 300; opacity: 0.8; }
+
+  /* ===== CALENDARIOS ===== */
+  .cal-grid-2 { display: flex; flex-direction: row; gap: 20px; justify-content: flex-start; flex-wrap: wrap; }
+  .big-cal { background: #fff; border-radius: 10px; border: 1px solid #e0e0e0; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.10); width: fit-content; }
+  .big-cal-header { background: #2a2218; color: #fff; padding: 10px 14px; display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+  .big-cal-month { font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 500; letter-spacing: 1.5px; text-transform: uppercase; }
+  .big-cal-year { font-size: 0.8rem; font-weight: 300; opacity: 0.6; }
+  .big-cal-body { padding: 8px 10px 12px; }
+  .big-cal-days { display: grid; grid-template-columns: repeat(7, clamp(28px, 4.5vw, 34px)); gap: 0; justify-content: center; }
+  .big-cal-dayname { text-align: center; font-size: 0.52rem; font-weight: 700; color: #ccc; padding: 2px 0 4px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .big-cal-day { height: clamp(24px, 3.5vw, 28px); display: flex; align-items: center; justify-content: center; font-size: clamp(0.75rem, 1.5vw, 1rem); position: relative; font-weight: 500; color: #333; }
+  .big-cal-day.empty { background: transparent; }
+  .big-cal-day.sunday .day-num { color: #c0392b; }
+  .big-cal-day.past .day-num { color: #ddd; }
+  .big-cal-day.today .day-num { background: #2a2218; color: #fff; width: clamp(22px,3vw,26px); height: clamp(22px,3vw,26px); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: clamp(0.7rem,1.3vw,0.9rem); }
+  .big-cal-day.reserved { cursor: pointer; }
+  .big-cal-day.reserved .day-num { color: #bbb; }
+  .big-cal-day.reserved::before, .big-cal-day.reserved::after { content: ''; position: absolute; width: 70%; height: 2.5px; background: #c8854a; border-radius: 2px; top: 50%; left: 15%; transform-origin: center; }
+  .big-cal-day.reserved::before { transform: translateY(-50%) rotate(40deg); }
+  .big-cal-day.reserved::after  { transform: translateY(-50%) rotate(-40deg); }
+  .big-cal-day.past-reserved .day-num { color: #ddd; }
+  .big-cal-day.past-reserved::before, .big-cal-day.past-reserved::after { content: ''; position: absolute; width: 70%; height: 2.5px; background: #ddd; border-radius: 2px; top: 50%; left: 15%; transform-origin: center; }
+  .big-cal-day.past-reserved::before { transform: translateY(-50%) rotate(40deg); }
+  .big-cal-day.past-reserved::after  { transform: translateY(-50%) rotate(-40deg); }
+  .cal-name-tooltip { position: absolute; bottom: calc(100% + 5px); left: 50%; transform: translateX(-50%); background: rgba(30,20,10,0.88); color: #fff; font-size: 0.65rem; padding: 3px 8px; border-radius: 5px; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 10; }
+  .big-cal-day:hover .cal-name-tooltip { opacity: 1; }
+
+  /* ===== STATS ===== */
+  .stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+  .stat { background: var(--surface); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.4); border-radius: var(--radius); padding: 14px 10px; text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,0.07); }
+  .stat-num { font-family: 'Playfair Display', serif; font-size: 1.5rem; color: var(--accent); line-height: 1; }
+  .stat-label { font-size: 0.65rem; color: var(--muted); margin-top: 4px; }
+
+  /* ===== CONFIG PANEL (solo Ariel) ===== */
+  .config-panel { background: var(--surface); backdrop-filter: blur(10px); border-radius: var(--radius); border: 1px solid rgba(255,200,100,0.4); padding: 16px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; box-shadow: 0 4px 16px rgba(0,0,0,0.07); }
+  .config-panel label { font-size: 0.78rem; font-weight: 600; color: var(--accent); white-space: nowrap; }
+  .config-panel input { padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; background: var(--bg); color: var(--text); outline: none; width: 140px; transition: border-color 0.2s; }
+  .config-panel input:focus { border-color: var(--accent2); }
+  .config-hint { font-size: 0.72rem; color: var(--muted); }
+
+  /* ===== LAYOUT ===== */
+  .main-grid { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+  .card { background: var(--surface); backdrop-filter: blur(10px); border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.4); padding: 22px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+  .card-title { font-family: 'Playfair Display', serif; font-size: 1.1rem; color: var(--accent); margin-bottom: 18px; padding-bottom: 11px; border-bottom: 2px solid rgba(216,207,192,0.6); display: flex; align-items: center; gap: 8px; }
+  .tabs { display: flex; gap: 5px; margin-bottom: 16px; background: var(--surface2); padding: 4px; border-radius: 10px; }
+  .tab { flex: 1; padding: 8px; border: none; border-radius: 7px; background: transparent; color: var(--muted); font-family: 'DM Sans', sans-serif; font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: all 0.2s; text-align: center; line-height: 1.3; }
+  .tab.active { background: var(--accent); color: #fff; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; margin-bottom: 14px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1/-1; }
+  label { font-size: 0.74rem; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  input[type="text"], input[type="date"], input[type="number"], select { padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 0.88rem; background: rgba(245,240,232,0.7); color: var(--text); transition: border-color 0.2s; outline: none; width: 100%; }
+  input:focus, select:focus { border-color: var(--accent2); background: #fff; }
+
+  .btn { padding: 10px 22px; border: none; border-radius: 9px; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 0.88rem; font-weight: 500; transition: all 0.2s; }
+  .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
+  .btn-primary { background: var(--accent); color: #fff; width: 100%; }
+  .btn-primary:hover:not(:disabled) { background: var(--accent2); transform: translateY(-1px); }
+  .btn-work { background: #3730a3; color: #fff; width: 100%; }
+  .btn-work:hover:not(:disabled) { background: #4338ca; transform: translateY(-1px); }
+  .btn-ghost { background: var(--surface2); color: var(--text); }
+
+  .right-col { display: flex; flex-direction: column; gap: 18px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  thead tr { background: var(--accent); color: #fff; }
+  th { padding: 11px 13px; text-align: left; font-weight: 500; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.5px; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: filter 0.15s; }
+  tbody tr:hover { filter: brightness(0.97); }
+  tbody tr.paid { background: var(--paid-bg); border-left: 4px solid var(--paid); }
+  tbody tr.unpaid { background: var(--unpaid-bg); border-left: 4px solid var(--unpaid); }
+  tbody tr.work-paid { background: var(--paid-bg); border-left: 4px solid var(--paid); }
+  tbody tr.work-unpaid { background: var(--work-bg); border-left: 4px solid var(--work-border); }
+  td { padding: 10px 13px; vertical-align: middle; }
+
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 20px; font-size: 0.72rem; font-weight: 500; }
+  .badge.paid { background: var(--paid-bg); color: var(--paid); border: 1px solid var(--paid-border); }
+  .badge.unpaid { background: var(--unpaid-bg); color: var(--unpaid); border: 1px solid var(--unpaid-border); }
+  .badge.work { background: var(--work-bg); color: var(--work-color); border: 1px solid var(--work-border); }
+  .badge.cesped { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+  .badge.mantenimiento { background: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; }
+  .badge.otro { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+
+  .upload-btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 7px; border: 1.5px dashed var(--border); background: rgba(245,240,232,0.6); color: var(--muted); font-size: 0.78rem; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+  .upload-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .upload-btn.done { border-style: solid; border-color: var(--paid-border); color: var(--paid); background: var(--paid-bg); }
+  .file-input { display: none; }
+  .del-btn { background: none; border: none; color: var(--muted); cursor: pointer; padding: 4px; border-radius: 5px; transition: color 0.2s; }
+  .del-btn:hover { color: var(--unpaid); }
+  .importe { font-weight: 600; color: var(--accent); }
+  .empty-state { text-align: center; padding: 34px; color: var(--muted); font-size: 0.87rem; }
+  .fotos-col { display: flex; flex-direction: column; gap: 4px; }
+
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ===== MODAL ===== */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border-radius: 16px; padding: 26px; max-width: 560px; width: 92%; box-shadow: 0 24px 60px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto; }
+  .modal h3 { font-family: 'Playfair Display', serif; color: var(--accent); margin-bottom: 8px; }
+  .modal p { font-size: 0.87rem; color: var(--muted); margin-bottom: 16px; }
+  .modal-fotos { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+  .modal-foto-slot { display: flex; flex-direction: column; gap: 6px; }
+  .modal-foto-label { font-size: 0.7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .modal-foto-img { width: 100%; border-radius: 8px; object-fit: cover; max-height: 180px; }
+  .modal-foto-upload { display: flex; align-items: center; justify-content: center; padding: 18px; border: 2px dashed var(--border); border-radius: 8px; cursor: pointer; color: var(--muted); font-size: 0.8rem; transition: all 0.2s; gap: 6px; }
+  .modal-foto-upload:hover { border-color: var(--accent2); color: var(--accent2); }
+  .modal-comprobante { margin-bottom: 14px; }
+  .modal-btns { display: flex; gap: 10px; justify-content: flex-end; }
+
+  @media (max-width: 1100px) { .main-grid { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(3, 1fr); } }
+
+  /* ===== MOBILE ===== */
+  @media (max-width: 700px) {
+    .cal-grid-2 { flex-direction: column; align-items: stretch; gap: 14px; }
+    .big-cal { width: 100%; }
+    .big-cal-days { grid-template-columns: repeat(7, 1fr); }
+    .big-cal-day { height: clamp(34px, 11vw, 42px); font-size: clamp(0.88rem, 3.8vw, 1rem); }
+    .big-cal-day.today .day-num { width: clamp(28px,9vw,36px); height: clamp(28px,9vw,36px); font-size: clamp(0.8rem,3vw,0.9rem); }
+
+    .stats { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .stat { padding: 12px 8px; }
+    .stat-num { font-size: 1.3rem; }
+
+    header { padding: 12px 16px; }
+    header h1 { font-size: 1.1rem; }
+    .header-right { gap: 4px; }
+
+    .container { padding: 12px 10px; gap: 14px; }
+    .card { padding: 14px; }
+    .form-grid { grid-template-columns: 1fr; }
+    .form-group.full { grid-column: 1; }
+
+    .config-panel { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .config-panel input { width: 100%; }
+
+    /* Tablas → cards en mobile */
+    .table-wrap { overflow-x: visible; }
+    table, thead, tbody, th, td, tr { display: block; }
+    thead { display: none; }
+    tbody tr {
+      border-radius: 10px; margin-bottom: 10px;
+      padding: 12px 14px; border-left-width: 4px !important;
+      border-bottom: none !important;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    tbody td {
+      padding: 4px 0; border: none;
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.83rem;
+    }
+    tbody td::before {
+      content: attr(data-label);
+      font-size: 0.65rem; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.4px;
+      min-width: 80px; flex-shrink: 0;
+    }
+    tbody td:empty { display: none; }
+
+    .modal { padding: 20px 16px; width: 96%; }
+    .modal-fotos { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 380px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    header h1 { font-size: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="loading-bar" id="loading-bar"></div>
+
+<!-- ===== LOGIN ===== -->
+<div class="login-screen" id="login-screen" style="display:none;">
+  <div class="login-box">
+    <h2>🏡 Cabaña del Delta</h2>
+    <p>Ingresá con tu usuario y contraseña</p>
+    <div class="login-field">
+      <label>Usuario</label>
+      <input type="text" id="login-user" placeholder="usuario" autocomplete="username">
+    </div>
+    <div class="login-field">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="login-btn" onclick="doLogin()">Ingresar</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<header>
+  <div>
+    <h1>🏡 Cabaña del Delta</h1>
+  </div>
+  <div class="header-right">
+    <div id="fecha-hoy" style="font-size:0.8rem;opacity:0.75;"></div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div class="user-badge">
+        <span id="user-label"></span>
+        <button class="logout-btn" onclick="doLogout()">Salir</button>
+      </div>
+      <div class="sync-indicator">
+        <div class="sync-dot" id="sync-dot"></div>
+        <span id="sync-text">Conectando...</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- CALENDARIOS -->
+  <div>
+    <div class="section-title">📅 Vista de disponibilidad <span>— días tachados = reservados</span></div>
+    <div class="cal-grid-2">
+      <div class="big-cal" id="bigcal-0"></div>
+      <div class="big-cal" id="bigcal-1"></div>
+    </div>
+  </div>
+
+  <!-- STATS (stat-cobrado se oculta para Juli) -->
+  <div class="stats">
+    <div class="stat"><div class="stat-num" id="stat-reservas">—</div><div class="stat-label">Reservas</div></div>
+    <div class="stat"><div class="stat-num" id="stat-trabajos">—</div><div class="stat-label">Trabajos</div></div>
+    <div class="stat"><div class="stat-num" style="color:var(--paid)" id="stat-pagas">—</div><div class="stat-label">Pagos ✓</div></div>
+    <div class="stat"><div class="stat-num" style="color:var(--unpaid)" id="stat-pendientes">—</div><div class="stat-label">Pendientes</div></div>
+    <div class="stat"><div class="stat-num" style="color:#c8854a;font-size:1rem" id="stat-adeudado">—</div><div class="stat-label">Total adeudado</div></div>
+    <div class="stat" id="stat-cobrado-card"><div class="stat-num" style="color:var(--paid);font-size:1rem" id="stat-cobrado">—</div><div class="stat-label">Total cobrado</div></div>
+  </div>
+
+  <!-- CONFIG LIMPIEZA (solo Ariel) -->
+  <div class="config-panel" id="config-panel" style="display:none;">
+    <label>💰 Valor de limpieza por defecto:</label>
+    <input type="number" id="config-limpieza" value="35000" min="0" onchange="guardarValorLimpieza()">
+    <span class="config-hint">Se autocompleta al crear cada reserva. Podés editarlo por reserva individualmente.</span>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="main-grid">
+
+    <div class="card">
+      <div class="card-title">➕ Nuevo Registro</div>
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('reserva',event)">🏠 Reserva<br>+ Limpieza</button>
+        <button class="tab" onclick="switchTab('trabajo',event)">🔧 Trabajo<br>Adicional</button>
+      </div>
+
+      <div class="tab-panel active" id="panel-reserva">
+        <div class="form-grid">
+          <div class="form-group"><label>Fecha de entrada</label><input type="date" id="f-entrada"></div>
+          <div class="form-group"><label>Fecha de salida</label><input type="date" id="f-salida"></div>
+          <div class="form-group full"><label>Nombre del inquilino</label><input type="text" id="f-nombre" placeholder="Ej: María García"></div>
+          <div class="form-group full"><label>Notas (opcional)</label><input type="text" id="f-notas" placeholder="Ej: 4 personas, mascotas..."></div>
+          <div class="form-group full">
+            <label>Importe limpieza ($)</label>
+            <input type="number" id="f-importe" placeholder="Ej: 35000" min="0">
+          </div>
+        </div>
+        <button class="btn btn-primary" id="btn-reserva" onclick="agregarReserva()">Agregar Reserva</button>
+      </div>
+
+      <div class="tab-panel" id="panel-trabajo">
+        <div class="form-grid">
+          <div class="form-group full">
+            <label>Tipo de trabajo</label>
+            <select id="t-tipo">
+              <option value="cesped">🌿 Corte de césped</option>
+              <option value="mantenimiento">🔧 Mantenimiento general</option>
+              <option value="otro">📋 Otro</option>
+            </select>
+          </div>
+          <div class="form-group full"><label>Descripción</label><input type="text" id="t-desc" placeholder="Ej: Pintura exterior..."></div>
+          <div class="form-group"><label>Fecha</label><input type="date" id="t-fecha"></div>
+          <div class="form-group"><label>Importe ($)</label><input type="number" id="t-importe" placeholder="Ej: 8000" min="0"></div>
+        </div>
+        <button class="btn btn-work" id="btn-trabajo" onclick="agregarTrabajo()">Agregar Trabajo</button>
+      </div>
+    </div>
+
+    <div class="right-col">
+      <div class="card">
+        <div class="card-title">🏠 Reservas y Limpiezas</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Entrada</th><th>Salida</th><th>Inquilino</th><th>Notas</th><th>Limpieza</th><th>Comprobante</th><th>Estado</th><th></th></tr></thead>
+            <tbody id="tabla-reservas"></tbody>
+          </table>
+          <div class="empty-state" id="empty-reservas" style="display:none;">Aún no hay reservas. ¡Agregá la primera! 🏡</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🔧 Trabajos Adicionales</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Fecha</th><th>Tipo</th><th>Descripción</th><th>Importe</th><th>📷 Antes</th><th>📷 Después</th><th>Comprobante</th><th>Estado</th><th></th></tr></thead>
+            <tbody id="tabla-trabajos"></tbody>
+          </table>
+          <div class="empty-state" id="empty-trabajos" style="display:none;">No hay trabajos adicionales aún. 🔧</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <h3 id="modal-title"></h3>
+    <p id="modal-desc"></p>
+    <div id="modal-content"></div>
+    <div class="modal-btns"><button class="btn btn-ghost" onclick="cerrarModal()">Cerrar</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ============ CONFIG ============
+  const EMAILJS_PUBLIC_KEY  = 'PIovLBw5TprNUOimN';
+  const EMAILJS_SERVICE_ID  = 'service_m9y78o4';
+  const EMAILJS_TEMPLATE_ID = 'template_mjsa29l';
+  const MI_EMAIL = 'arielsmania@gmail.com';
+  const SUPABASE_URL = 'https://rklliyfrgiyrknjcxafx.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJrbGxpeWZyZ2l5cmtuamN4YWZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwNTYxMDcsImV4cCI6MjA4NzYzMjEwN30.7lQhpyA9KVNqbLXezrdxBds23dUgrtUWsCNviEjDob4';
+  const STORAGE_URL    = `${SUPABASE_URL}/storage/v1/object/comprobantes`;
+  const STORAGE_PUBLIC = `${SUPABASE_URL}/storage/v1/object/public/comprobantes`;
+
+  // ============ USUARIOS ============
+  const USUARIOS = {
+    'ariel':  { pass: 'cabana2024', nombre: 'Ariel', esAdmin: true },
+    'juli':   { pass: 'delta2024',  nombre: 'Julieta', esAdmin: false }
+  };
+  let usuarioActual = null;
+
+  function doLogin() {
+    const user = document.getElementById('login-user').value.trim().toLowerCase();
+    const pass = document.getElementById('login-pass').value;
+    const u = USUARIOS[user];
+    if (u && u.pass === pass) {
+      usuarioActual = { ...u, user };
+      localStorage.setItem('cabana_session', JSON.stringify({ user, pass }));
+      activarSesion();
+    } else {
+      document.getElementById('login-error').textContent = 'Usuario o contraseña incorrectos.';
+      setTimeout(() => document.getElementById('login-error').textContent = '', 3000);
+    }
+  }
+
+  function activarSesion() {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('user-label').textContent = `👤 ${usuarioActual.nombre}`;
+    document.getElementById('stat-cobrado-card').style.display = usuarioActual.esAdmin ? '' : 'none';
+    document.getElementById('config-panel').style.display = usuarioActual.esAdmin ? '' : 'none';
+    cargarDatos();
+  }
+
+  function doLogout() {
+    usuarioActual = null;
+    localStorage.removeItem('cabana_session');
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('login-user').value = '';
+    document.getElementById('login-pass').value = '';
+  }
+
+  // Auto-login si hay sesión guardada — al final para que el DOM esté listo
+  window.addEventListener('DOMContentLoaded', function() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('cabana_session'));
+      if (saved) {
+        const u = USUARIOS[saved.user];
+        if (u && u.pass === saved.pass) {
+          usuarioActual = { ...u, user: saved.user };
+          activarSesion();
+          return;
+        }
+      }
+    } catch(e) {}
+    document.getElementById('login-screen').style.display = 'flex';
+  });
+
+  // ============ VALOR LIMPIEZA ============
+  let valorLimpieza = 35000;
+
+  function guardarValorLimpieza() {
+    const v = Number(document.getElementById('config-limpieza').value);
+    if (v >= 0) { valorLimpieza = v; showToast(`✓ Valor de limpieza actualizado: $${v.toLocaleString('es-AR')}`); }
+  }
+
+  // Auto-completar importe al abrir pestaña reserva
+  function switchTab(tab, e) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    e.currentTarget.classList.add('active');
+    document.getElementById('panel-' + tab).classList.add('active');
+    if (tab === 'reserva' && !document.getElementById('f-importe').value) {
+      document.getElementById('f-importe').value = valorLimpieza;
+    }
+  }
+
+  emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+  async function enviarEmail(asunto, mensaje) {
+    try { await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, { to_email: MI_EMAIL, subject: asunto, message: mensaje }); }
+    catch(e) { console.warn('Email:', e); }
+  }
+
+  // ============ SUPABASE ============
+  const HEADERS = { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Prefer': 'return=representation' };
+  const sbGet    = async t => { const r=await fetch(`${SUPABASE_URL}/rest/v1/${t}?order=creado_at.asc`,{headers:HEADERS}); if(!r.ok)throw new Error(await r.text()); return r.json(); };
+  const sbInsert = async (t,d) => { const r=await fetch(`${SUPABASE_URL}/rest/v1/${t}`,{method:'POST',headers:HEADERS,body:JSON.stringify(d)}); if(!r.ok)throw new Error(await r.text()); return r.json(); };
+  const sbUpdate = async (t,id,d) => { const r=await fetch(`${SUPABASE_URL}/rest/v1/${t}?id=eq.${id}`,{method:'PATCH',headers:HEADERS,body:JSON.stringify(d)}); if(!r.ok)throw new Error(await r.text()); return r.json(); };
+  const sbDelete = async (t,id) => { const r=await fetch(`${SUPABASE_URL}/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:HEADERS}); if(!r.ok)throw new Error(await r.text()); };
+
+  // ============ STORAGE ============
+  async function storageUpload(path, file) {
+    const r = await fetch(`${STORAGE_URL}/${path}`, {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': file.type, 'x-upsert': 'true' },
+      body: file
+    });
+    if (!r.ok) throw new Error(await r.text());
+    return `${STORAGE_PUBLIC}/${path}`;
+  }
+
+  async function storageDelete(path) {
+    try { await fetch(`${SUPABASE_URL}/storage/v1/object/comprobantes/${path}`, { method: 'DELETE', headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }); }
+    catch(e) { console.warn('Storage delete:', e); }
+  }
+
+  // ============ REDIMENSIÓN DE IMÁGENES (max 1MB) ============
+  function redimensionarImagen(file, maxMB = 1) {
+    return new Promise((resolve) => {
+      const maxBytes = maxMB * 1024 * 1024;
+      if (file.size <= maxBytes) { resolve(file); return; }
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+        // Reducir escala hasta que quepa en ~1MB
+        let scale = Math.sqrt(maxBytes / file.size) * 0.9;
+        canvas.width  = Math.round(width  * scale);
+        canvas.height = Math.round(height * scale);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(blob => {
+          resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+        }, 'image/jpeg', 0.85);
+      };
+      img.src = url;
+    });
+  }
+
+  // ============ BORRADO AUTOMÁTICO > 6 MESES ============
+  async function limpiarComprobantesViejos() {
+    const hace6m = new Date(); hace6m.setMonth(hace6m.getMonth() - 6);
+    const lim = hace6m.toISOString().split('T')[0];
+    for (const r of reservas.filter(r => r.comprobante_url && r.entrada < lim)) {
+      const p = r.comprobante_url.split('/comprobantes/')[1];
+      if (p) await storageDelete(p);
+      await sbUpdate('reservas', r.id, { comprobante_url: null });
+      r.comprobante_url = null;
+    }
+    for (const t of trabajos.filter(t => t.comprobante_url && t.fecha < lim)) {
+      const p = t.comprobante_url.split('/comprobantes/')[1];
+      if (p) await storageDelete(p);
+      await sbUpdate('trabajos', t.id, { comprobante_url: null });
+      t.comprobante_url = null;
+    }
+  }
+
+  // ============ ESTADO ============
+  let reservas=[], trabajos=[];
+  const hoy = new Date();
+  const fmt = f => { const [y,m,d]=f.split('-'); return `${d}/${m}/${y}`; };
+  document.getElementById('fecha-hoy').textContent = hoy.toLocaleDateString('es-AR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  // ============ UI HELPERS ============
+  function setLoading(on) { const b=document.getElementById('loading-bar'); b.className='loading-bar'+(on?' active':' done'); if(!on)setTimeout(()=>b.className='loading-bar',600); }
+  function setSyncing(on) { document.getElementById('sync-dot').className='sync-dot'+(on?' syncing':''); document.getElementById('sync-text').textContent=on?'Sincronizando...':'Conectado ✓'; }
+  function showToast(msg,type='success') { const t=document.getElementById('toast'); t.textContent=msg; t.className=`toast ${type} show`; setTimeout(()=>t.className='toast',3500); }
+
+  // ============ CALENDARIOS ============
+  const DIAS=['Do','Lu','Ma','Mi','Ju','Vi','Sá'];
+  const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+  function renderBigCal(containerId, year, month) {
+    const container=document.getElementById(containerId);
+    const primerDia=new Date(year,month,1).getDay(), diasEnMes=new Date(year,month+1,0).getDate();
+    const hoyStr=`${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`;
+    let h=DIAS.map(d=>`<div class="big-cal-dayname">${d}</div>`).join('');
+    h+=Array(primerDia).fill('<div class="big-cal-day empty"></div>').join('');
+    for(let d=1;d<=diasEnMes;d++){
+      const fs=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const ds=new Date(year,month,d).getDay(), esHoy=fs===hoyStr, esPas=fs<hoyStr;
+      const res=reservas.find(r=>fs>=r.entrada&&fs<r.salida);
+      let cls='big-cal-day ', inner='';
+      if(esHoy){cls+='today';inner=`<span class="day-num">${d}</span>`;}
+      else if(res){cls+=esPas?'past-reserved':'reserved';inner=`<span class="day-num">${d}</span><span class="cal-name-tooltip">${res.nombre}</span>`;}
+      else if(esPas){cls+='past';inner=`<span class="day-num">${d}</span>`;}
+      else{cls+=ds===0?'normal sunday':'normal';inner=`<span class="day-num">${d}</span>`;}
+      h+=`<div class="${cls}">${inner}</div>`;
+    }
+    container.innerHTML=`<div class="big-cal-header"><span class="big-cal-month">${MESES[month]}</span><span class="big-cal-year">${year}</span></div><div class="big-cal-body"><div class="big-cal-days">${h}</div></div>`;
+  }
+  function renderBigCals(){ renderBigCal('bigcal-0',hoy.getFullYear(),hoy.getMonth()); renderBigCal('bigcal-1',new Date(hoy.getFullYear(),hoy.getMonth()+1,1).getFullYear(),new Date(hoy.getFullYear(),hoy.getMonth()+1,1).getMonth()); }
+
+  // ============ RESERVAS ============
+  async function agregarReserva() {
+    const entrada=document.getElementById('f-entrada').value, salida=document.getElementById('f-salida').value;
+    const nombre=document.getElementById('f-nombre').value.trim(), notas=document.getElementById('f-notas').value.trim();
+    const importeV=document.getElementById('f-importe').value || valorLimpieza;
+    if(!entrada||!salida||!nombre){showToast('Completá entrada, salida y nombre.','error');return;}
+    if(entrada>=salida){showToast('La salida debe ser posterior a la entrada.','error');return;}
+    const btn=document.getElementById('btn-reserva');
+    btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Guardando...';setSyncing(true);
+    try{
+      const [nueva]=await sbInsert('reservas',{entrada,salida,nombre,notas,importe:Number(importeV),pagada:false});
+      reservas.push(nueva);renderAll();
+      ['f-entrada','f-salida','f-nombre','f-notas'].forEach(i=>document.getElementById(i).value='');
+      document.getElementById('f-importe').value = valorLimpieza;
+      showToast('✓ Reserva guardada');
+      enviarEmail(`🏠 Nueva reserva: ${nombre}`,`Nueva reserva:\n\n👤 ${nombre}\n📅 Entrada: ${fmt(entrada)}\n📅 Salida: ${fmt(salida)}\n📝 ${notas||'Sin notas'}\n💰 Limpieza: $${Number(importeV).toLocaleString('es-AR')}`);
+    }catch(e){showToast('Error al guardar.','error');console.error(e);}
+    btn.disabled=false;btn.innerHTML='Agregar Reserva';setSyncing(false);
+  }
+
+  function renderTablaReservas() {
+    const tbody=document.getElementById('tabla-reservas'),empty=document.getElementById('empty-reservas');
+    tbody.innerHTML='';empty.style.display=reservas.length===0?'block':'none';
+    [...reservas].sort((a,b)=>a.entrada.localeCompare(b.entrada)).forEach(r=>{
+      const tr=document.createElement('tr');tr.className=r.pagada?'paid':'unpaid';
+      tr.innerHTML=`
+        <td data-label="Entrada"><strong>${fmt(r.entrada)}</strong></td>
+        <td data-label="Salida">${fmt(r.salida)}</td>
+        <td data-label="Inquilino">${r.nombre}</td>
+        <td data-label="Notas" style="color:var(--muted);font-size:0.8rem">${r.notas||'—'}</td>
+        <td data-label="Limpieza" class="importe">${r.importe?'$'+Number(r.importe).toLocaleString('es-AR'):'—'}</td>
+        <td data-label="Comprobante">${renderBtnComprobante(r,'reservas')}</td>
+        <td data-label="Estado"><span class="badge ${r.pagada?'paid':'unpaid'}">${r.pagada?'✓ Paga':'⏳ Pendiente'}</span></td>
+        <td data-label=""><button class="del-btn" onclick="eliminar('reservas',${r.id})">✕</button></td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ============ TRABAJOS ============
+  const TIPO_LABELS={cesped:'🌿 Césped',mantenimiento:'🔧 Mantenimiento',otro:'📋 Otro'};
+
+  async function agregarTrabajo() {
+    const tipo=document.getElementById('t-tipo').value, descripcion=document.getElementById('t-desc').value.trim();
+    const fecha=document.getElementById('t-fecha').value, importeV=document.getElementById('t-importe').value;
+    if(!fecha||!descripcion){showToast('Completá la fecha y la descripción.','error');return;}
+    const btn=document.getElementById('btn-trabajo');
+    btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Guardando...';setSyncing(true);
+    try{
+      const [nuevo]=await sbInsert('trabajos',{tipo,descripcion,fecha,importe:importeV?Number(importeV):null,pagada:false});
+      trabajos.push(nuevo);renderAll();
+      ['t-desc','t-fecha','t-importe'].forEach(i=>document.getElementById(i).value='');
+      document.getElementById('t-tipo').value='cesped';
+      showToast('✓ Trabajo guardado');
+      enviarEmail(`🔧 Nuevo trabajo: ${TIPO_LABELS[tipo]}`,`Nuevo trabajo:\n\n🔧 ${TIPO_LABELS[tipo]}\n📝 ${descripcion}\n📅 ${fmt(fecha)}\n💰 ${importeV?'$'+Number(importeV).toLocaleString('es-AR'):'Sin importe'}`);
+    }catch(e){showToast('Error al guardar.','error');console.error(e);}
+    btn.disabled=false;btn.innerHTML='Agregar Trabajo';setSyncing(false);
+  }
+
+  function renderTablaTrabjos() {
+    const tbody=document.getElementById('tabla-trabajos'),empty=document.getElementById('empty-trabajos');
+    tbody.innerHTML='';empty.style.display=trabajos.length===0?'block':'none';
+    [...trabajos].sort((a,b)=>b.fecha.localeCompare(a.fecha)).forEach(t=>{
+      const tr=document.createElement('tr');tr.className=t.pagada?'work-paid':'work-unpaid';
+      tr.innerHTML=`
+        <td data-label="Fecha"><strong>${fmt(t.fecha)}</strong></td>
+        <td data-label="Tipo"><span class="badge ${t.tipo}">${TIPO_LABELS[t.tipo]||t.tipo}</span></td>
+        <td data-label="Descripción">${t.descripcion}</td>
+        <td data-label="Importe" class="importe">${t.importe?'$'+Number(t.importe).toLocaleString('es-AR'):'—'}</td>
+        <td data-label="📷 Antes">${renderBtnFoto(t,'antes')}</td>
+        <td data-label="📷 Después">${renderBtnFoto(t,'despues')}</td>
+        <td data-label="Comprobante">${renderBtnComprobante(t,'trabajos')}</td>
+        <td data-label="Estado"><span class="badge ${t.pagada?'paid':'work'}">${t.pagada?'✓ Pago':'⏳ Pendiente'}</span></td>
+        <td data-label=""><button class="del-btn" onclick="eliminar('trabajos',${t.id})">✕</button></td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ============ BOTONES FOTO (Antes / Después con cámara) ============
+  function renderBtnFoto(t, tipo) {
+    const campo = tipo === 'antes' ? 'foto_antes_url' : 'foto_despues_url';
+    const label = tipo === 'antes' ? 'Ver' : 'Ver';
+    const emoji = tipo === 'antes' ? '🔵' : '🟢';
+    if (t[campo]) {
+      return `<span class="upload-btn done" onclick="verFotoSola(${t.id},'${tipo}')" style="cursor:pointer;">${emoji} ${label}</span>`;
+    }
+    // capture="environment" abre la cámara trasera en celular
+    return `<label class="upload-btn" title="${tipo}">📷<input type="file" class="file-input" accept="image/*" capture="environment" onchange="subirFoto(event,${t.id},'${tipo}')"></label>`;
+  }
+
+  async function subirFoto(event, id, tipo) {
+    let file = event.target.files[0]; if(!file) return;
+    setSyncing(true);
+    showToast('Procesando imagen...','success');
+    try {
+      file = await redimensionarImagen(file);
+      const ext = 'jpg';
+      const path = `trabajo_${id}_${tipo}_${Date.now()}.${ext}`;
+      const url = await storageUpload(path, file);
+      const campo = tipo === 'antes' ? 'foto_antes_url' : 'foto_despues_url';
+      await sbUpdate('trabajos', id, { [campo]: url });
+      const idx = trabajos.findIndex(t=>t.id===id);
+      if(idx!==-1) trabajos[idx][campo] = url;
+      renderAll();
+      showToast(`✓ Foto "${tipo}" subida`);
+    } catch(e) { showToast('Error al subir la foto.','error'); console.error(e); }
+    setSyncing(false);
+  }
+
+  function verFotoSola(id, tipo) {
+    const t = trabajos.find(x=>x.id===id); if(!t) return;
+    const campo = tipo === 'antes' ? 'foto_antes_url' : 'foto_despues_url';
+    const tituloTipo = tipo === 'antes' ? 'Antes del trabajo' : 'Después del trabajo';
+    document.getElementById('modal-title').textContent = `📷 ${tituloTipo}`;
+    document.getElementById('modal-desc').textContent = `${TIPO_LABELS[t.tipo]} · ${fmt(t.fecha)} · ${t.descripcion}`;
+    document.getElementById('modal-content').innerHTML = `<img src="${t[campo]}" style="max-width:100%;border-radius:10px;max-height:380px;object-fit:contain;margin-bottom:10px;">`;
+    document.getElementById('modal-overlay').classList.add('open');
+  }
+
+  // ============ COMPROBANTE (Storage) ============
+  function renderBtnComprobante(item, tabla) {
+    if(item.comprobante_url)
+      return `<span class="upload-btn done" onclick="verComprobante('${tabla}',${item.id})" style="cursor:pointer;">🧾 Ver</span>`;
+    return `<label class="upload-btn">📎 Subir<input type="file" class="file-input" accept="image/*" onchange="subirComprobante(event,'${tabla}',${item.id})"></label>`;
+  }
+
+  async function subirComprobante(event, tabla, id) {
+    let file = event.target.files[0]; if(!file) return;
+    setSyncing(true);
+    showToast('Procesando imagen...','success');
+    try {
+      file = await redimensionarImagen(file);
+      const path = `${tabla}_${id}_comp_${Date.now()}.jpg`;
+      const url = await storageUpload(path, file);
+      await sbUpdate(tabla, id, { comprobante_url: url, pagada: true });
+      const arr = tabla==='reservas'?reservas:trabajos;
+      const idx = arr.findIndex(x=>x.id===id);
+      if(idx!==-1){ arr[idx].comprobante_url=url; arr[idx].pagada=true; }
+      const item = arr[idx];
+      if(tabla==='reservas') {
+        enviarEmail(`✅ Comprobante recibido: ${item.nombre}`,`Julieta subió el comprobante:\n\n👤 ${item.nombre}\n📅 Entrada: ${fmt(item.entrada)}\n📅 Salida: ${fmt(item.salida)}\n💰 $${Number(item.importe||0).toLocaleString('es-AR')}\n\n¡Pago registrado! ✓`);
+      } else {
+        enviarEmail(`✅ Comprobante recibido: ${TIPO_LABELS[item.tipo]}`,`Julieta subió el comprobante:\n\n🔧 ${TIPO_LABELS[item.tipo]}\n📝 ${item.descripcion}\n📅 ${fmt(item.fecha)}\n💰 $${Number(item.importe||0).toLocaleString('es-AR')}\n\n¡Pago registrado! ✓`);
+      }
+      renderAll();
+      showToast('✓ Comprobante subido. Marcado como pago.');
+    } catch(err) { showToast('Error al subir el comprobante.','error'); console.error(err); }
+    setSyncing(false);
+  }
+
+  function verComprobante(tabla, id) {
+    const arr=tabla==='reservas'?reservas:trabajos, item=arr.find(x=>x.id===id); if(!item)return;
+    document.getElementById('modal-title').textContent='🧾 Comprobante de pago';
+    document.getElementById('modal-desc').textContent=tabla==='reservas'?`${item.nombre} · Entrada: ${item.entrada}`:`${TIPO_LABELS[item.tipo]} · ${item.fecha}`;
+    document.getElementById('modal-content').innerHTML=`<img src="${item.comprobante_url}" style="max-width:100%;border-radius:10px;max-height:380px;object-fit:contain;margin-bottom:10px;">`;
+    document.getElementById('modal-overlay').classList.add('open');
+  }
+
+  function cerrarModal(){document.getElementById('modal-overlay').classList.remove('open');}
+  document.getElementById('modal-overlay').addEventListener('click',function(e){if(e.target===this)cerrarModal();});
+
+  // ============ ELIMINAR ============
+  async function eliminar(tabla, id) {
+    if(!confirm('¿Eliminar este registro?'))return;
+    setSyncing(true);
+    try{
+      const arr=tabla==='reservas'?reservas:trabajos, item=arr.find(x=>x.id===id);
+      if(item){
+        const paths=[item.comprobante_url,item.foto_antes_url,item.foto_despues_url].filter(Boolean).map(u=>u.split('/comprobantes/')[1]).filter(Boolean);
+        for(const p of paths) await storageDelete(p);
+      }
+      await sbDelete(tabla,id);
+      if(tabla==='reservas')reservas=reservas.filter(r=>r.id!==id);
+      else trabajos=trabajos.filter(t=>t.id!==id);
+      renderAll();showToast('Registro eliminado.');
+    }catch(e){showToast('Error al eliminar.','error');}
+    setSyncing(false);
+  }
+
+  // ============ STATS ============
+  function actualizarStats() {
+    const adeudado=[
+      ...reservas.filter(r=>!r.pagada&&r.importe).map(r=>Number(r.importe)),
+      ...trabajos.filter(t=>!t.pagada&&t.importe).map(t=>Number(t.importe))
+    ].reduce((a,b)=>a+b,0);
+    const cobrado=[
+      ...reservas.filter(r=>r.pagada&&r.importe).map(r=>Number(r.importe)),
+      ...trabajos.filter(t=>t.pagada&&t.importe).map(t=>Number(t.importe))
+    ].reduce((a,b)=>a+b,0);
+    document.getElementById('stat-reservas').textContent=reservas.length;
+    document.getElementById('stat-trabajos').textContent=trabajos.length;
+    document.getElementById('stat-pagas').textContent=reservas.filter(r=>r.pagada).length+trabajos.filter(t=>t.pagada).length;
+    document.getElementById('stat-pendientes').textContent=reservas.filter(r=>!r.pagada).length+trabajos.filter(t=>!t.pagada).length;
+    document.getElementById('stat-adeudado').textContent='$'+adeudado.toLocaleString('es-AR');
+    document.getElementById('stat-cobrado').textContent='$'+cobrado.toLocaleString('es-AR');
+  }
+
+  function renderAll(){renderBigCals();renderTablaReservas();renderTablaTrabjos();actualizarStats();}
+
+  // ============ CARGA ============
+  async function cargarDatos() {
+    setLoading(true);setSyncing(true);
+    try{
+      [reservas,trabajos]=await Promise.all([sbGet('reservas'),sbGet('trabajos')]);
+      // Sincronizar valor de limpieza con el campo config
+      document.getElementById('f-importe').value = valorLimpieza;
+      document.getElementById('config-limpieza').value = valorLimpieza;
+      renderAll();
+      await limpiarComprobantesViejos();
+      setSyncing(false);
+      document.getElementById('sync-text').textContent='Conectado ✓';
+    }catch(e){
+      showToast('No se pudo conectar.','error');
+      document.getElementById('sync-text').textContent='Sin conexión ✗';
+      document.getElementById('sync-dot').style.background='#f87171';
+    }
+    setLoading(false);
+  }
+
+  setInterval(async()=>{
+    if(!usuarioActual)return;
+    try{[reservas,trabajos]=await Promise.all([sbGet('reservas'),sbGet('trabajos')]);renderAll();}catch(e){}
+  },30000);
+</script>
+</body>
+</html>
