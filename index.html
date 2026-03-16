@@ -175,6 +175,12 @@
   .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
   @keyframes spin { to { transform: rotate(360deg); } }
  
+  .section-header td { background: var(--surface2); font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; padding: 7px 13px; cursor: pointer; user-select: none; border-bottom: 1px solid var(--border); }
+  .section-header td:hover { background: var(--border); }
+  .section-header-cell { display: flex; align-items: center; justify-content: space-between; }
+  .del-comp-btn { cursor: pointer; font-size: 0.85rem; opacity: 0.5; transition: opacity 0.2s; padding: 2px 4px; border-radius: 4px; }
+  .del-comp-btn:hover { opacity: 1; background: rgba(220,53,69,0.12); }
+ 
   /* ===== MODAL ===== */
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
   .modal-overlay.open { display: flex; }
@@ -511,7 +517,7 @@
     catch(e) { console.warn('Storage delete:', e); }
   }
  
-  // ============ REDIMENSIÓN DE IMÁGENES (max 1MB) ============
+  // ============ REDIMENSIÓN DE IMÁGENES (max 1MB, siempre JPEG) ============
   function redimensionarImagen(file, maxMB = 1) {
     return new Promise((resolve) => {
       const img = new Image();
@@ -522,7 +528,6 @@
         const canvas = document.createElement('canvas');
         let { width, height } = img;
         if (file.size > maxBytes) {
-          // Reducir escala hasta que quepa en ~1MB
           let scale = Math.sqrt(maxBytes / file.size) * 0.9;
           width  = Math.round(width  * scale);
           height = Math.round(height * scale);
@@ -613,9 +618,13 @@
   }
  
   function renderTablaReservas() {
+    ['res-pend','res-pag'].forEach(id=>{const el=document.getElementById(id);if(el)el.remove();});
     const tbody=document.getElementById('tabla-reservas'),empty=document.getElementById('empty-reservas');
-    tbody.innerHTML='';empty.style.display=reservas.length===0?'block':'none';
-    [...reservas].sort((a,b)=>a.entrada.localeCompare(b.entrada)).forEach(r=>{
+    tbody.innerHTML='';
+    const sorted=[...reservas].sort((a,b)=>a.entrada.localeCompare(b.entrada));
+    const pendientes=sorted.filter(r=>!r.pagada), pagadas=sorted.filter(r=>r.pagada);
+    empty.style.display=reservas.length===0?'block':'none';
+    function makeRow(r){
       const tr=document.createElement('tr');tr.className=r.pagada?'paid':'unpaid';
       tr.innerHTML=`
         <td data-label="Entrada"><strong>${fmt(r.entrada)}</strong></td>
@@ -626,8 +635,25 @@
         <td data-label="Comprobante">${renderBtnComprobante(r,'reservas')}</td>
         <td data-label="Estado"><span class="badge ${r.pagada?'paid':'unpaid'}">${r.pagada?'✓ Paga':'⏳ Pendiente'}</span></td>
         <td data-label=""><button class="del-btn" onclick="eliminar('reservas',${r.id})">✕</button></td>`;
-      tbody.appendChild(tr);
-    });
+      return tr;
+    }
+    const table=tbody.parentElement;
+    if(pendientes.length>0){
+      const hdr=document.createElement('tr');hdr.className='section-header';
+      hdr.innerHTML=`<td colspan="8" class="section-header-cell" onclick="toggleSection('res-pend')">⏳ Pendientes (${pendientes.length}) <span id="arrow-res-pend">▲</span></td>`;
+      tbody.appendChild(hdr);
+      const grp=document.createElement('tbody');grp.id='res-pend';
+      pendientes.forEach(r=>grp.appendChild(makeRow(r)));
+      table.appendChild(grp);
+    }
+    if(pagadas.length>0){
+      const hdr=document.createElement('tr');hdr.className='section-header';
+      hdr.innerHTML=`<td colspan="8" class="section-header-cell" onclick="toggleSection('res-pag')">✓ Pagadas (${pagadas.length}) <span id="arrow-res-pag">▼</span></td>`;
+      tbody.appendChild(hdr);
+      const grp=document.createElement('tbody');grp.id='res-pag';grp.style.display='none';
+      pagadas.forEach(r=>grp.appendChild(makeRow(r)));
+      table.appendChild(grp);
+    }
   }
  
   // ============ TRABAJOS ============
@@ -651,9 +677,13 @@
   }
  
   function renderTablaTrabjos() {
+    ['trab-pend','trab-pag'].forEach(id=>{const el=document.getElementById(id);if(el)el.remove();});
     const tbody=document.getElementById('tabla-trabajos'),empty=document.getElementById('empty-trabajos');
-    tbody.innerHTML='';empty.style.display=trabajos.length===0?'block':'none';
-    [...trabajos].sort((a,b)=>b.fecha.localeCompare(a.fecha)).forEach(t=>{
+    tbody.innerHTML='';
+    const sorted=[...trabajos].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+    const pendientes=sorted.filter(t=>!t.pagada), pagados=sorted.filter(t=>t.pagada);
+    empty.style.display=trabajos.length===0?'block':'none';
+    function makeRow(t){
       const tr=document.createElement('tr');tr.className=t.pagada?'work-paid':'work-unpaid';
       tr.innerHTML=`
         <td data-label="Fecha"><strong>${fmt(t.fecha)}</strong></td>
@@ -665,8 +695,25 @@
         <td data-label="Comprobante">${renderBtnComprobante(t,'trabajos')}</td>
         <td data-label="Estado"><span class="badge ${t.pagada?'paid':'work'}">${t.pagada?'✓ Pago':'⏳ Pendiente'}</span></td>
         <td data-label=""><button class="del-btn" onclick="eliminar('trabajos',${t.id})">✕</button></td>`;
-      tbody.appendChild(tr);
-    });
+      return tr;
+    }
+    const table=tbody.parentElement;
+    if(pendientes.length>0){
+      const hdr=document.createElement('tr');hdr.className='section-header';
+      hdr.innerHTML=`<td colspan="9" class="section-header-cell" onclick="toggleSection('trab-pend')">⏳ Pendientes (${pendientes.length}) <span id="arrow-trab-pend">▲</span></td>`;
+      tbody.appendChild(hdr);
+      const grp=document.createElement('tbody');grp.id='trab-pend';
+      pendientes.forEach(t=>grp.appendChild(makeRow(t)));
+      table.appendChild(grp);
+    }
+    if(pagados.length>0){
+      const hdr=document.createElement('tr');hdr.className='section-header';
+      hdr.innerHTML=`<td colspan="9" class="section-header-cell" onclick="toggleSection('trab-pag')">✓ Pagados (${pagados.length}) <span id="arrow-trab-pag">▼</span></td>`;
+      tbody.appendChild(hdr);
+      const grp=document.createElement('tbody');grp.id='trab-pag';grp.style.display='none';
+      pagados.forEach(t=>grp.appendChild(makeRow(t)));
+      table.appendChild(grp);
+    }
   }
  
   // ============ BOTONES FOTO (Antes / Después con cámara) ============
@@ -712,9 +759,41 @@
  
   // ============ COMPROBANTE (Storage) ============
   function renderBtnComprobante(item, tabla) {
-    if(item.comprobante_url)
-      return `<span class="upload-btn done" onclick="verComprobante('${tabla}',${item.id})" style="cursor:pointer;">🧾 Ver</span>`;
+    if(item.comprobante_url) {
+      const btnBorrar = usuarioActual && usuarioActual.esAdmin
+        ? `<span class="del-comp-btn" onclick="borrarComprobante('${tabla}',${item.id})" title="Borrar comprobante">🗑</span>`
+        : '';
+      return `<span style="display:inline-flex;align-items:center;gap:4px;"><span class="upload-btn done" onclick="verComprobante('${tabla}',${item.id})" style="cursor:pointer;">🧾 Ver</span>${btnBorrar}</span>`;
+    }
     return `<label class="upload-btn">📎 Subir<input type="file" class="file-input" accept="image/*" onchange="subirComprobante(event,'${tabla}',${item.id})"></label>`;
+  }
+ 
+  async function borrarComprobante(tabla, id) {
+    if(!usuarioActual || !usuarioActual.esAdmin) return;
+    if(!confirm('¿Borrar el comprobante? El registro vuelve a estado pendiente.')) return;
+    const arr = tabla==='reservas' ? reservas : trabajos;
+    const item = arr.find(x=>x.id===id); if(!item) return;
+    setSyncing(true);
+    try {
+      if(item.comprobante_url) {
+        const path = item.comprobante_url.split('/comprobantes/')[1];
+        if(path) await storageDelete(path);
+      }
+      await sbUpdate(tabla, id, { comprobante_url: null, pagada: false });
+      const idx = arr.findIndex(x=>x.id===id);
+      if(idx!==-1){ arr[idx].comprobante_url=null; arr[idx].pagada=false; }
+      renderAll();
+      showToast('✓ Comprobante borrado. Registro vuelve a pendiente.');
+    } catch(err) { showToast('Error al borrar el comprobante.','error'); console.error(err); }
+    setSyncing(false);
+  }
+ 
+  function toggleSection(id) {
+    const grp=document.getElementById(id); if(!grp) return;
+    const visible=grp.style.display!=='none';
+    grp.style.display=visible?'none':'';
+    const arrow=document.getElementById('arrow-'+id);
+    if(arrow) arrow.textContent=visible?'▼':'▲';
   }
  
   async function subirComprobante(event, tabla, id) {
