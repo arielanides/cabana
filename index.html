@@ -76,6 +76,9 @@
   .container { max-width: 1400px; margin: 0 auto; padding: 28px 20px; display: flex; flex-direction: column; gap: 24px; }
   .section-title { font-family: 'Playfair Display', serif; font-size: 1.5rem; color: #fff; text-shadow: 0 2px 12px rgba(0,0,0,0.5); margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
   .section-title span { font-size: 0.82rem; font-family: 'DM Sans', sans-serif; font-weight: 300; opacity: 0.8; }
+  #proximo-texto { font-size: 1rem; font-weight: 500; opacity: 1; letter-spacing: 0; }
+  #proximo-texto.hoy { color: #ff6b6b; text-shadow: 0 0 12px rgba(255,100,100,0.4); }
+  #proximo-texto.proximo { color: #fff; }
  
   /* ===== CALENDARIOS ===== */
   .cal-grid-2 { display: flex; flex-direction: row; gap: 20px; justify-content: flex-start; flex-wrap: wrap; }
@@ -302,7 +305,7 @@
  
   <!-- CALENDARIOS -->
   <div>
-    <div class="section-title">📅 Vista de disponibilidad <span id="proximo-texto">—</span></div>
+    <div class="section-title">📅 Vista de disponibilidad &nbsp;<span id="proximo-texto"></span></div>
     <div class="cal-grid-2">
       <div class="big-cal" id="bigcal-0"></div>
       <div class="big-cal" id="bigcal-1"></div>
@@ -880,11 +883,12 @@
     const proxima=reservas.filter(r=>r.entrada>=hoyStr).sort((a,b)=>a.entrada.localeCompare(b.entrada))[0];
     const el=document.getElementById('proximo-texto');
     if(!el)return;
-    if(!proxima){el.textContent='— sin reservas próximas';return;}
+    el.className='';
+    if(!proxima){el.textContent='';return;}
     const diff=Math.round((new Date(proxima.entrada)-new Date(hoyStr))/(1000*60*60*24));
-    if(diff===0) el.textContent=`— ¡Hoy entra ${proxima.nombre}!`;
-    else if(diff===1) el.textContent=`— Mañana entra ${proxima.nombre}`;
-    else el.textContent=`— Próxima entrada en ${diff} días · ${proxima.nombre}`;
+    if(diff===0){ el.textContent=`¡Hoy entra ${proxima.nombre}!`; el.className='hoy'; }
+    else if(diff===1){ el.textContent=`Mañana entra ${proxima.nombre}`; el.className='proximo'; }
+    else { el.textContent=`Próxima entrada en ${diff} días · ${proxima.nombre}`; el.className='proximo'; }
   }
  
   function renderAll(){renderBigCals();renderProximaReserva();renderTablaReservas();renderTablaTrabjos();actualizarStats();}
