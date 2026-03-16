@@ -180,6 +180,9 @@
   .section-header-cell { display: flex; align-items: center; justify-content: space-between; }
   .del-comp-btn { cursor: pointer; font-size: 0.85rem; opacity: 0.5; transition: opacity 0.2s; padding: 2px 4px; border-radius: 4px; }
   .del-comp-btn:hover { opacity: 1; background: rgba(220,53,69,0.12); }
+  .historial { font-size: 0.68rem; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+  .proximo-banner { background: rgba(200,133,74,0.15); border: 1px solid rgba(200,133,74,0.4); border-radius: 10px; padding: 10px 16px; margin-top: 12px; display: flex; align-items: center; gap: 10px; font-size: 0.83rem; color: var(--accent); }
+  .proximo-banner strong { color: var(--accent2); }
  
   /* ===== MODAL ===== */
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
@@ -305,6 +308,7 @@
       <div class="big-cal" id="bigcal-0"></div>
       <div class="big-cal" id="bigcal-1"></div>
     </div>
+    <div id="proximo-banner"></div>
   </div>
  
   <!-- STATS (stat-cobrado se oculta para Juli) -->
@@ -626,10 +630,13 @@
     empty.style.display=reservas.length===0?'block':'none';
     function makeRow(r){
       const tr=document.createElement('tr');tr.className=r.pagada?'paid':'unpaid';
+      const creado = r.creado_at ? '📋 ' + new Date(r.creado_at).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '';
+      const pagado = r.pagado_at ? ' · 💰 ' + new Date(r.pagado_at).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '';
+      const historial = (creado||pagado) ? `<div class="historial">${creado}${pagado}</div>` : '';
       tr.innerHTML=`
         <td data-label="Entrada"><strong>${fmt(r.entrada)}</strong></td>
         <td data-label="Salida">${fmt(r.salida)}</td>
-        <td data-label="Inquilino">${r.nombre}</td>
+        <td data-label="Inquilino">${r.nombre}${historial}</td>
         <td data-label="Notas" style="color:var(--muted);font-size:0.8rem">${r.notas||'—'}</td>
         <td data-label="Limpieza" class="importe">${r.importe?'$'+Number(r.importe).toLocaleString('es-AR'):'—'}</td>
         <td data-label="Comprobante">${renderBtnComprobante(r,'reservas')}</td>
@@ -685,10 +692,13 @@
     empty.style.display=trabajos.length===0?'block':'none';
     function makeRow(t){
       const tr=document.createElement('tr');tr.className=t.pagada?'work-paid':'work-unpaid';
+      const creado = t.creado_at ? '📋 ' + new Date(t.creado_at).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '';
+      const pagado = t.pagado_at ? ' · 💰 ' + new Date(t.pagado_at).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '';
+      const historial = (creado||pagado) ? `<div class="historial">${creado}${pagado}</div>` : '';
       tr.innerHTML=`
         <td data-label="Fecha"><strong>${fmt(t.fecha)}</strong></td>
         <td data-label="Tipo"><span class="badge ${t.tipo}">${TIPO_LABELS[t.tipo]||t.tipo}</span></td>
-        <td data-label="Descripción">${t.descripcion}</td>
+        <td data-label="Descripción">${t.descripcion}${historial}</td>
         <td data-label="Importe" class="importe">${t.importe?'$'+Number(t.importe).toLocaleString('es-AR'):'—'}</td>
         <td data-label="📷 Antes">${renderBtnFoto(t,'antes')}</td>
         <td data-label="📷 Después">${renderBtnFoto(t,'despues')}</td>
@@ -779,9 +789,9 @@
         const path = item.comprobante_url.split('/comprobantes/')[1];
         if(path) await storageDelete(path);
       }
-      await sbUpdate(tabla, id, { comprobante_url: null, pagada: false });
+      await sbUpdate(tabla, id, { comprobante_url: null, pagada: false, pagado_at: null });
       const idx = arr.findIndex(x=>x.id===id);
-      if(idx!==-1){ arr[idx].comprobante_url=null; arr[idx].pagada=false; }
+      if(idx!==-1){ arr[idx].comprobante_url=null; arr[idx].pagada=false; arr[idx].pagado_at=null; }
       renderAll();
       showToast('✓ Comprobante borrado. Registro vuelve a pendiente.');
     } catch(err) { showToast('Error al borrar el comprobante.','error'); console.error(err); }
@@ -804,10 +814,10 @@
       file = await redimensionarImagen(file);
       const path = `${tabla}_${id}_comp_${Date.now()}.jpg`;
       const url = await storageUpload(path, file);
-      await sbUpdate(tabla, id, { comprobante_url: url, pagada: true });
+      await sbUpdate(tabla, id, { comprobante_url: url, pagada: true, pagado_at: new Date().toISOString() });
       const arr = tabla==='reservas'?reservas:trabajos;
       const idx = arr.findIndex(x=>x.id===id);
-      if(idx!==-1){ arr[idx].comprobante_url=url; arr[idx].pagada=true; }
+      const now=new Date().toISOString(); if(idx!==-1){ arr[idx].comprobante_url=url; arr[idx].pagada=true; arr[idx].pagado_at=now; }
       const item = arr[idx];
       if(tabla==='reservas') {
         enviarEmail(`✅ Comprobante recibido: ${item.nombre}`,`Julieta subió el comprobante:\n\n👤 ${item.nombre}\n📅 Entrada: ${fmt(item.entrada)}\n📅 Salida: ${fmt(item.salida)}\n💰 $${Number(item.importe||0).toLocaleString('es-AR')}\n\n¡Pago registrado! ✓`);
@@ -867,7 +877,21 @@
     document.getElementById('stat-cobrado').textContent='$'+cobrado.toLocaleString('es-AR');
   }
  
-  function renderAll(){renderBigCals();renderTablaReservas();renderTablaTrabjos();actualizarStats();}
+  function renderProximaReserva() {
+    const hoyStr=`${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`;
+    const proxima=reservas.filter(r=>r.entrada>=hoyStr).sort((a,b)=>a.entrada.localeCompare(b.entrada))[0];
+    const el=document.getElementById('proximo-banner');
+    if(!el)return;
+    if(!proxima){el.innerHTML='';return;}
+    const diff=Math.round((new Date(proxima.entrada)-new Date(hoyStr))/(1000*60*60*24));
+    let msg='';
+    if(diff===0) msg=`🏠 <strong>¡Hoy entra ${proxima.nombre}!</strong> Sale el ${fmt(proxima.salida)}`;
+    else if(diff===1) msg=`🏠 <strong>Mañana entra ${proxima.nombre}</strong> · Sale el ${fmt(proxima.salida)}`;
+    else msg=`🏠 Próxima entrada en <strong>${diff} días</strong> · ${proxima.nombre} · ${fmt(proxima.entrada)} → ${fmt(proxima.salida)}`;
+    el.innerHTML=`<div class="proximo-banner">📅 ${msg}</div>`;
+  }
+ 
+  function renderAll(){renderBigCals();renderProximaReserva();renderTablaReservas();renderTablaTrabjos();actualizarStats();}
  
   // ============ CARGA ============
   async function cargarDatos() {
